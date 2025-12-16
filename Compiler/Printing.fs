@@ -30,6 +30,7 @@ let precedence e =
   match e with 
     | Constant _ -> 0
     | Var _ -> 0
+    | TypedVar _ -> 0
     | Op (_,Plus,_) -> 5
     | Op (_,Minus,_) -> 5
     | Op (_,Times,_) -> 3
@@ -53,6 +54,7 @@ let precedence e =
     | SetCons _ -> 8
 
     | Rec _ -> max_prec
+    | RecTyped _ -> max_prec
     | Closure _ -> max_prec
     | App _ ->  2
     | Raise _ -> max_prec
@@ -76,6 +78,7 @@ and exp2string prec e =
       | Op (e1,op,e2) -> 
           (exp2string p e1) + " "+(string_of_op op)+" "+(exp2string prec e2)
       | Var x -> x
+      | TypedVar (t, x) -> "(" + x + ":" + t.ToString() + ")"
       | If (e1, e2, e3) -> 
         "if " + (exp2string max_prec e1) + 
         " then " + (exp2string max_prec e2) + 
@@ -100,6 +103,8 @@ and exp2string prec e =
         " | " + hd + "::" + tl + " -> " + (exp2string p e3)
 
       | Rec (f,x,body) -> "rec "+f+" "+x+" = "+(exp2string max_prec body)
+      | RecTyped (f,x,t,body) -> 
+        "rec "+f+" ("+x+":" + t.ToString() + ") = "+(exp2string max_prec body)
       | Closure (env,f,x,body) -> 
         "closure "+env2string env+" "+f+" "+x+" = "+(exp2string max_prec body)
       | App (e1,e2) -> (exp2string p e1)+" "+(exp2string p e2)

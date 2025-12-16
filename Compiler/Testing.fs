@@ -199,6 +199,7 @@ let sum_pairs = Rec("sum_pairs", "l", App(
 
 // Test bad operation
 let bad_op = TryWith(Op (Constant (Bool true), Plus, Constant (Int 1)), "e", Raise (Var "e"))
+// Now throws type error before evaluation, removing from tests to see other tests
 
 let fact_safe =
   Rec("fact_safe", "n",
@@ -217,13 +218,25 @@ let no_arg_err =
 
 let arg_err = App(fact_safe, Constant (Int (-5)))
 
+(***********************)
+(* Type Checking *)
+(***********************)
+
+let add = RecTyped("add", "x", IntT,
+              RecTyped("add_loop", "y", IntT,
+                Op(Var "x", Plus, Var "y")
+              )
+            )
+
+let add_error = App (App(add, two), (Constant (Bool true)))
+
 (*********)
 (* TESTS *)
 (*********)
 
 (* Feel free to add many more tests of your own to the list *)
 let tests = [zero; fact4; list4; ol4; ol3; sl4; sol3; test_set4; get_set4;
-  clo; incr_all; incr_all4; sum_pairs; bad_op; arg_err_safe; no_arg_err; arg_err]
+  clo; incr_all; incr_all4; sum_pairs; arg_err_safe; no_arg_err; arg_err; add_error]
 
 let run_test eval exp =
   Printf.printf "========\n";
