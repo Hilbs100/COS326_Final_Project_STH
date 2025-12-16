@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "HQJT4Ia6iVE=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\samue\\Documents\\COS 326\\COS326_Final_Project_STH\\Compiler\\Compiler.fsproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\samue\\.nuget\\packages\\fsharp.core\\10.0.101\\fsharp.core.10.0.101.nupkg.sha512"
+  ],
+  "logs": []
+}
