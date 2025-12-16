@@ -44,6 +44,7 @@ let precedence e =
 
     | EmptyList -> 0
     | Cons _ -> 8
+    | OCons _ -> 8
     | Match _ -> max_prec
 
     | Rec _ -> max_prec
@@ -84,6 +85,8 @@ and exp2string prec e =
 
       | EmptyList -> "[]"
       | Cons (e1,e2) -> (exp2string p e1) + "::" + (exp2string prec e2) 
+      | OCons (e1,e2) -> (exp2string p e1) + ";;" + (exp2string prec e2)
+      (* Using ;; to differentiate between ordered and unordered *)
       | Match (e1,e2,hd,tl,e3) -> 
         "match " + (exp2string max_prec e1) + 
         " with [] -> " + (exp2string max_prec e2) + 

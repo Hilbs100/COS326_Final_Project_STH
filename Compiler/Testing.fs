@@ -83,18 +83,30 @@ let rec listify (l:exp list) : exp =
 (* a list of 4 numbers *)
 let list4 = listify [one;two;three;four] 
 
-(* rec sumlist l = 
+let rec ordered_listify (l:exp list) : exp =
+  match l with
+      [] -> EmptyList
+    | hd::tl -> OCons(hd,ordered_listify tl)
+
+(* a ordered list of 4 numbers *)
+let ol4 = ordered_listify [one;two;three;four]
+
+let ol3 = ordered_listify [four; three; two]
+
+(* rec sublist l = 
  *   match l with
  *     [] -> 0
- *   | hd::tl -> hd + sumlist tl *)
-let sumlist = 
-  Rec ("sumlist", "l", 
+ *   | hd::tl -> hd - sublist tl *)
+ (* Did sublist because order matters for testing ordered lists *)
+let sublist = 
+  Rec ("sublist", "l", 
        Match (Var "l",
            zero,
-           "hd", "tl", Op (Var "hd", Plus, 
-               App (Var "sumlist", Var "tl"))))
+           "hd", "tl", Op (Var "hd", Minus, 
+               App (Var "sublist", Var "tl"))))
 
-let sl4 = App (sumlist, list4)
+let sl4 = App (sublist, list4)
+let sol3 = App (sublist, ol3)
 
 (*******************************)
 (* QUESTIONS FOR YOU TO ANSWER *)
@@ -178,7 +190,8 @@ let arg_err = App(fact_safe, Constant (Int (-5)))
 (*********)
 
 (* Feel free to add many more tests of your own to the list *)
-let tests = [zero; fact4; list4; sl4; clo; incr_all; incr_all4; sum_pairs; bad_op; arg_err_safe; no_arg_err; arg_err]
+let tests = [zero; fact4; list4; ol4; ol3; sl4; sol3; clo; incr_all; incr_all4; 
+  sum_pairs; bad_op; arg_err_safe; no_arg_err; arg_err]
 
 let run_test eval exp =
   Printf.printf "========\n";

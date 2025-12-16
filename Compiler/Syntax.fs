@@ -46,6 +46,8 @@ type exp =
 //   match e1 with 
 //   | [] -> e2 
 //   | hd::tl -> e3 
+  | OCons of exp * exp
+//   An ordered version of Cons which will recursvily construct lists in order
                 
   | Match of exp * exp * variable * variable * exp  
 

@@ -20,6 +20,7 @@ let rec is_value (e:exp) : bool =
     | Pair (e1, e2) -> is_value e1 && is_value e2
     | EmptyList -> true
     | Cons (e1, e2) -> is_value e1 && is_value e2
+    | OCons (e1, e2) -> is_value e1 && is_value e2
     | Closure _ -> true
     | _ -> false
 (* ----------------------------------------- *)
@@ -70,6 +71,7 @@ let rec free_vars_with_bound (bound:variable list) (e:exp) : variable list =
   | Snd e1 -> free_vars_with_bound bound e1
   | EmptyList -> []
   | Cons (e1, e2) -> var_union (free_vars_with_bound bound e1) (free_vars_with_bound bound e2)
+  | OCons (e1, e2) -> var_union (free_vars_with_bound bound e1) (free_vars_with_bound bound e2)
   | Match (e1, e2, hd, tl, e3) ->
       let f1 = free_vars_with_bound bound e1 in
       let f2 = free_vars_with_bound bound e2 in
@@ -156,14 +158,47 @@ let eval_body (env:env) (eval_loop:env -> exp -> exp) (e:exp) : exp =
         let v1 = eval_loop env e1 in
         let v2 = eval_loop env e2 in
         Cons (v1, v2)
+    // Ordered Cons - took a lot of code because had to handle var and constant cases and mixtures of them
+    | OCons (e1, e2) ->
+        match eval_loop env e1 with
+        | Constant x -> 
+          match eval_loop env e2 with
+          | EmptyList -> OCons(Constant x, EmptyList)
+          | OCons(Constant hd, tl) -> 
+            if x < hd then OCons(Constant x, OCons(Constant hd, tl)) 
+            else eval_loop env (OCons(Constant hd, OCons(Constant x, tl)))
+          | OCons(Var hd, tl) -> 
+            (match eval_loop env (Var hd) with
+                | Constant hdv -> 
+                  if x < hdv then OCons(Constant x, OCons(Constant hdv, tl)) 
+                  else eval_loop env (OCons(Constant hdv, OCons(Constant x, tl)))
+                | _ -> raise (BadInput (Var hd)))
+          | _ -> raise (BadInput e2)
+        | Var x -> 
+          (match eval_loop env (Var x) with
+            | Constant xv ->
+              match eval_loop env e2 with
+              | EmptyList -> OCons(Constant xv, EmptyList)
+              | OCons(Constant hd, tl) -> 
+                if xv < hd then OCons(Constant xv, OCons(Constant hd, tl)) 
+                else eval_loop env (OCons(Constant hd, OCons(Constant xv, tl)))
+              | OCons(Var hd, tl) ->
+                (match eval_loop env (Var hd) with
+                | Constant hdv -> 
+                  if xv < hdv then OCons(Constant xv, OCons(Constant hdv, tl)) 
+                  else eval_loop env (OCons(Constant hdv, OCons(Constant xv, tl)))
+                | _ -> raise (BadInput (Var hd)))
+              | _ -> raise (BadInput e2)
+            | _ -> raise (BadInput (Var x)))
+        | _ -> raise (BadInput e1)
     | Match (e1, e2, hd, tl, e3) -> 
         (match eval_loop env e1 with
         | EmptyList -> eval_loop env e2
         | Cons(v1, v2) -> eval_loop ((hd, v1)::(tl, v2)::env) e3
+        | OCons(v1, v2) -> eval_loop ((hd, v1)::(tl, v2)::env) e3
         | v -> raise (BadMatch v))
     | Raise e1 -> 
         let v1 = eval_loop env e1 in
-        // printfn "Exception raised: %s" (string_of_exp v1)
         Raise v1
     | TryWith (e1, x, e2) ->
         try 
