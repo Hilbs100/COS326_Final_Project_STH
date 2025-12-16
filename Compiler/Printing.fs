@@ -11,7 +11,7 @@ let string_of_const c =
   match c with 
     | Int i -> string i
     | Bool b -> string b
-    | String s -> s
+    | String s -> "\"" + s + "\""
 
 
 let string_of_op op = 
@@ -22,6 +22,7 @@ let string_of_op op =
     | Div -> "/" 
     | Less -> "<" 
     | LessEq -> "<=" 
+    | Eq -> "==" // I know this doesn't look like ML, but makes it easier to read
 
 let max_prec = 10
 
@@ -35,6 +36,7 @@ let precedence e =
     | Op (_,Div,_) -> 3
     | Op (_,Less,_) -> 7
     | Op (_,LessEq,_) -> 7
+    | Op (_,Eq,_) -> 7
     | Let _ -> max_prec
     | If _ -> max_prec
 
@@ -46,6 +48,9 @@ let precedence e =
     | Cons _ -> 8
     | OCons _ -> 8
     | Match _ -> max_prec
+
+    | EmptySet -> 0
+    | SetCons _ -> 8
 
     | Rec _ -> max_prec
     | Closure _ -> max_prec
@@ -84,8 +89,10 @@ and exp2string prec e =
       | Snd e1 ->  "snd " + (exp2string p e1)
 
       | EmptyList -> "[]"
+      | EmptySet -> "{}"
       | Cons (e1,e2) -> (exp2string p e1) + "::" + (exp2string prec e2) 
       | OCons (e1,e2) -> (exp2string p e1) + ";;" + (exp2string prec e2)
+      | SetCons (e1,e2) -> (exp2string p e1) + "::" + (exp2string prec e2)
       (* Using ;; to differentiate between ordered and unordered *)
       | Match (e1,e2,hd,tl,e3) -> 
         "match " + (exp2string max_prec e1) + 

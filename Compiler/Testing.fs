@@ -108,6 +108,38 @@ let sublist =
 let sl4 = App (sublist, list4)
 let sol3 = App (sublist, ol3)
 
+(******************************)
+(* SETS    *)
+(******************************)
+
+let rec setify (l:exp list) : exp =
+  match l with
+    | [] -> EmptySet
+    | hd::tl -> SetCons(hd,setify tl)
+
+(* a set of 4 pairs *)
+let test_set4 = setify [Pair(one,two); Pair(three,four); Pair(two,three); Pair(one,four)] 
+// Should only get 3 elements when evaluated
+
+let rec get_from_dict = 
+  Rec("get_from_dict", "l" , Rec("dict_loop", "key",
+    Match (Var "l", 
+      Constant (String "None"), "hd", "tl", 
+      If(Op (Var "key", Eq, Fst (Var "hd")), 
+        Snd (Var "hd"), App (App (Var "get_from_dict", Var "tl"), Var "key")))))
+
+let get_set4 = App (App(get_from_dict, test_set4), two)
+
+let test_set = setify [one; two; three] // Throws BadInput as it's supposed to
+
+(*******************************)
+(* QUESTIONS FOR YOU TO ANSWER *)
+(*******************************)
+
+(* Define a function fact_tail that computes the factorial of a number
+   using tail recursion. You may define helper functions as needed.
+   Example: fact_tail 4 == 24*)
+
 (*******************************)
 (* QUESTIONS FOR YOU TO ANSWER *)
 (*******************************)
@@ -190,8 +222,8 @@ let arg_err = App(fact_safe, Constant (Int (-5)))
 (*********)
 
 (* Feel free to add many more tests of your own to the list *)
-let tests = [zero; fact4; list4; ol4; ol3; sl4; sol3; clo; incr_all; incr_all4; 
-  sum_pairs; bad_op; arg_err_safe; no_arg_err; arg_err]
+let tests = [zero; fact4; list4; ol4; ol3; sl4; sol3; test_set4; get_set4;
+  clo; incr_all; incr_all4; sum_pairs; bad_op; arg_err_safe; no_arg_err; arg_err]
 
 let run_test eval exp =
   Printf.printf "========\n";

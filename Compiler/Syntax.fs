@@ -15,7 +15,7 @@ let var_neq x y = not (compare x y = 0)
 
 type constant = Int of int | Bool of bool | String of string
 
-type operator = Plus | Minus | Times | Div | Less | LessEq 
+type operator = Plus | Minus | Times | Div | Less | LessEq | Eq
 
 type exp = 
 
@@ -48,6 +48,10 @@ type exp =
 //   | hd::tl -> e3 
   | OCons of exp * exp
 //   An ordered version of Cons which will recursvily construct lists in order
+
+//    Sets
+  | EmptySet
+  | SetCons of exp * exp
                 
   | Match of exp * exp * variable * variable * exp  
 

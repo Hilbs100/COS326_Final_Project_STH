@@ -34,4 +34,5 @@ let apply_op (v1:exp) (op:operator) (v2:exp) : exp =
          Constant (Bool (i<j))
        | Constant (Int i), LessEq, Constant (Int j) -> 
          Constant (Bool (i<=j))
+       | Constant i, Eq, Constant j -> Constant (Bool (i = j))
        | _, _, _ -> raise (BadOp (v1,op,v2))

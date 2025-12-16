@@ -19,8 +19,10 @@ let rec is_value (e:exp) : bool =
       Constant _ -> true  
     | Pair (e1, e2) -> is_value e1 && is_value e2
     | EmptyList -> true
+    | EmptySet -> true
     | Cons (e1, e2) -> is_value e1 && is_value e2
     | OCons (e1, e2) -> is_value e1 && is_value e2
+    | SetCons (e1, e2) -> is_value e1 && is_value e2
     | Closure _ -> true
     | _ -> false
 (* ----------------------------------------- *)
@@ -70,8 +72,8 @@ let rec free_vars_with_bound (bound:variable list) (e:exp) : variable list =
   | Fst e1 -> free_vars_with_bound bound e1
   | Snd e1 -> free_vars_with_bound bound e1
   | EmptyList -> []
-  | Cons (e1, e2) -> var_union (free_vars_with_bound bound e1) (free_vars_with_bound bound e2)
-  | OCons (e1, e2) -> var_union (free_vars_with_bound bound e1) (free_vars_with_bound bound e2)
+  | EmptySet -> []
+  | Cons (e1, e2) | OCons(e1, e2) | SetCons (e1, e2) -> var_union (free_vars_with_bound bound e1) (free_vars_with_bound bound e2)
   | Match (e1, e2, hd, tl, e3) ->
       let f1 = free_vars_with_bound bound e1 in
       let f2 = free_vars_with_bound bound e2 in
@@ -191,11 +193,24 @@ let eval_body (env:env) (eval_loop:env -> exp -> exp) (e:exp) : exp =
               | _ -> raise (BadInput e2)
             | _ -> raise (BadInput (Var x)))
         | _ -> raise (BadInput e1)
+    | EmptySet -> EmptySet
+    // A set that inherently disallows duplicate keys
+    | SetCons (e1, e2) ->
+        match eval_loop env e1 with
+        | Pair (v1, v2) -> 
+          match eval_loop env e2 with
+          | EmptySet -> SetCons (Pair (v1, v2), EmptySet)
+          | SetCons (Pair (hd1, hd2), tl) ->
+            if (v1 = hd1) then SetCons (Pair (hd1, hd2), tl) // no duplicate keys
+            else SetCons (Pair (hd1, hd2), eval_loop env (SetCons (Pair (v1, v2), tl)))
+          | _ -> raise (BadInput e2)
+        | _ -> raise (BadInput e1)      
     | Match (e1, e2, hd, tl, e3) -> 
         (match eval_loop env e1 with
         | EmptyList -> eval_loop env e2
         | Cons(v1, v2) -> eval_loop ((hd, v1)::(tl, v2)::env) e3
         | OCons(v1, v2) -> eval_loop ((hd, v1)::(tl, v2)::env) e3
+        | SetCons(v1, v2) -> eval_loop ((hd, v1)::(tl, v2)::env) e3
         | v -> raise (BadMatch v))
     | Raise e1 -> 
         let v1 = eval_loop env e1 in
