@@ -5,6 +5,22 @@
 
 module Compiler.Syntax
 
+// Types
+type typ = 
+  | IntT 
+  | BoolT
+  | StringT 
+  | AlphaT 
+  | ArrT of typ * typ
+  with
+    override this.ToString() =
+      match this with
+      | IntT -> "int"
+      | BoolT -> "bool"
+      | StringT -> "string"
+      | AlphaT -> "'a"
+      | ArrT (t1, t2) -> "(" + t1.ToString() + " -> " + t2.ToString() + ")"
+
 // A variable is represented as a string
 
 type variable = string 
@@ -20,7 +36,8 @@ type operator = Plus | Minus | Times | Div | Less | LessEq | Eq
 type exp = 
 
   // Basic 
-  | Var of variable   
+  | Var of variable
+  | TypedVar of typ * variable
   | Constant of constant
   | Op of exp * operator * exp
   // If (conditional, consequent, alternative)
@@ -60,6 +77,7 @@ type exp =
 //   The function is named f and x is the name of the parameter. b is 
 //   the body of the expression, and may contain f and/or x.
   | Rec of variable * variable * exp
+  | RecTyped of variable * variable * typ * exp
 //    Closure (e, f, x, b) is a closure of a possibly-recursive function.
 //    The closure environment is e.  f, x, and b are the same as in the 
 //    definition of the function.
@@ -75,7 +93,7 @@ and env = (variable * exp) list
 //*****************************
 // Manipulating environments
 //*****************************
- 
+
 // empty environment
 let empty_env : env = []
 
@@ -97,3 +115,39 @@ let rec update_env (env:env) (x:variable) (v:exp) : env =
   match env with
   | [] -> (x, v)::[]
   | (y, u)::tl -> if y = x then (x, v)::tl else (y,u)::update_env tl x v
+
+//*****************************
+// Manipulating Contexts
+//*****************************
+
+// Contex for types
+type ctx = (variable * typ) list
+let empty_ctx : ctx = []
+
+let rec update_ctx (ctx:ctx) (x:variable) (t:typ) : ctx = 
+  match ctx with
+  | [] -> (x, t)::[]
+  | (y, u)::tl -> if y = x then (x, t)::tl else (y,u)::update_ctx tl x t
+
+exception TypeError of variable
+
+let rec lookup_ctx (ctx:ctx) (x:variable) : typ option =
+  match ctx with
+  | [] -> None
+  | (y, t)::tl -> if y = x then Some t else lookup_ctx tl x
+
+let type_of_constant c =
+  match c with
+  | Int _ -> IntT
+  | Bool _ -> BoolT
+  | String _ -> StringT
+
+let type_of_op op =
+  match op with
+  | Plus -> (IntT, IntT, IntT)
+  | Minus -> (IntT, IntT, IntT)
+  | Times -> (IntT, IntT, IntT)
+  | Div -> (IntT, IntT, IntT)
+  | Less -> (IntT, IntT, BoolT)
+  | LessEq -> (IntT, IntT, BoolT)
+  | Eq -> (AlphaT, AlphaT, BoolT)

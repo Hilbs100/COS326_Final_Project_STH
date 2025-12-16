@@ -56,7 +56,7 @@ let rec var_remove_many (to_remove:variable list) (vs:variable list) : variable 
 (* free variables of an expression under a set of bound variables *)
 let rec free_vars_with_bound (bound:variable list) (e:exp) : variable list =
   match e with
-  | Var v -> if var_mem v bound then [] else [v]
+  | Var v | TypedVar (_, v) -> if var_mem v bound then [] else [v]
   | Constant _ -> []
   | Op (e1, _, e2) -> var_union (free_vars_with_bound bound e1) (free_vars_with_bound bound e2)
   | If (e1, e2, e3) ->
@@ -80,6 +80,7 @@ let rec free_vars_with_bound (bound:variable list) (e:exp) : variable list =
       let f3 = free_vars_with_bound (hd :: tl :: bound) e3 in
       var_union f1 (var_union f2 f3)
   | Rec (f, x, b) -> free_vars_with_bound (f :: x :: bound) b
+  | RecTyped (f, x, _, b) -> free_vars_with_bound (f :: x :: bound) b
   (* A closure literal is already closed by its env; treat as having no free vars. *)
   | Closure _ -> []
   | App (e1, e2) -> var_union (free_vars_with_bound bound e1) (free_vars_with_bound bound e2)
@@ -110,11 +111,88 @@ let prune_env (env:env) (fvs:variable list) : env =
 let prune (env:env) (f:variable) (x:variable) (body:exp) : env =
   prune_env env (free_vars_fun f x body)
 
+(* Type Checking *)
+let rec check (ctx:ctx) (e:exp) : typ =
+  match e with
+  | Constant c -> type_of_constant c
+  | Op (e1, op, e2) ->
+    let (t1, t2, t) = type_of_op op in 
+    let t1' = check ctx e1 in
+    let t2' = check ctx e2 in
+    if (t1 = t1' || t1' = AlphaT) && (t2 = t2' || t2' = AlphaT) then t
+    else raise (TypeError (string_of_exp e))
+  | Var x | TypedVar (_, x) -> 
+    match lookup_ctx ctx x with
+    | Some t -> t
+    | None -> raise (TypeError x)
+  | Rec (f, x, body) -> 
+    check (update_ctx (update_ctx ctx f AlphaT) x AlphaT) body
+  | RecTyped (f, x, t_arg, body) ->
+    let t_body = check (update_ctx (update_ctx ctx f (ArrT (t_arg, AlphaT))) x t_arg) body in
+    ArrT (t_arg, t_body)
+  | App (e1, e2) ->
+    let tf = check ctx e1 in
+    let ta = check ctx e2 in
+    (match tf with
+     | ArrT (t1, t2) -> 
+      if t1 = ta || ta = AlphaT then t2
+      else raise (TypeError (string_of_exp e))
+     | _ -> tf)
+  | If (e1, e2, e3) ->
+    let t1 = check ctx e1 in
+    if t1 <> BoolT then raise (TypeError (string_of_exp e1))
+    else 
+      let t2 = check ctx e2 in
+      let t3 = check ctx e3 in
+      t2 // Branches don't need to match for this, because we don't have Options to have None cases
+  | Let (x, e1, e2) ->
+    let t1 = check ctx e1 in
+    check (update_ctx ctx x t1) e2
+  | Pair (e1, e2) ->
+      let t1 = check ctx e1 in
+      let t2 = check ctx e2 in
+      ArrT (t1, t2) // Using array type to represent pair type for Fst and Snd
+  | Fst e1 -> 
+      (match check ctx e1 with
+      | ArrT (t1, t2) -> t1
+      | AlphaT -> AlphaT
+      | _ -> raise (TypeError (string_of_exp e1)))
+  | Snd e1 -> 
+      (match check ctx e1 with
+      | ArrT (t1, t2) -> t2
+      | AlphaT -> AlphaT
+      | _ -> raise (TypeError (string_of_exp e1)))
+  | EmptyList -> AlphaT // polymorphic list type
+  | EmptySet -> AlphaT // polymorphic set type
+  | Cons (e1, e2) | OCons (e1, e2) | SetCons (e1, e2) ->
+      let t1 = check ctx e1 in
+      let t2 = check ctx e2 in
+      t2
+  | Match (e1, e2, hd, tl, e3) -> 
+      let t1 = check ctx e1 in
+      let t2 = check ctx e2 in
+      let t3 = check (update_ctx (update_ctx ctx hd AlphaT) tl t1) e3 in
+      t2 // Again, don't have Options, so branches don't need to match
+  | Closure (envc, f, x, body) ->
+      raise (TypeError (string_of_exp e))
+  | Raise e1 -> 
+      let t1 = check ctx e1 in
+      t1
+  | TryWith (e1, x, e2) ->
+      let t1 = check ctx e1 in
+      let t2 = check (update_ctx ctx x AlphaT) e2 in
+      t2
+  
+
+(* ----------------------------------------- *)
+(* The evaluator                            *)
+(* ----------------------------------------- *)
+
 
 (* evaluation; use eval_loop to recursively evaluate subexpressions *)
 let eval_body (env:env) (eval_loop:env -> exp -> exp) (e:exp) : exp = 
   match e with
-    | Var x -> 
+    | Var x | TypedVar (_, x)-> 
       (match lookup_env env x with 
         | None -> raise (UnboundVariable x)
         | Some v -> v)
@@ -131,7 +209,7 @@ let eval_body (env:env) (eval_loop:env -> exp -> exp) (e:exp) : exp =
     | Let (x, e1, e2) ->
       let v1 = eval_loop env e1 in
       eval_loop ((x,v1)::env) e2
-    | Rec (f, x, e1) ->
+    | Rec (f, x, e1) | RecTyped (f, x, _, e1) ->
       let env' = prune env f x e1 in
       Closure (env', f, x, e1)
     | Closure (envc, f, x, e1) -> Closure (envc, f, x, e1)
@@ -227,8 +305,15 @@ let eval_body (env:env) (eval_loop:env -> exp -> exp) (e:exp) : exp =
 // (* evaluate closed, top-level expression e *)
 
 let eval e =
-  let rec loop env e = eval_body env loop e in
-  loop empty_env e
+  try
+    check empty_ctx e |> ignore;  // Type check before evaluating
+    let rec loop env e = eval_body env loop e in
+    loop empty_env e
+  with 
+    | TypeError msg -> 
+      Constant (String ("Type error: " + msg)); 
+    | ex -> 
+      Constant (String ("Runtime error: " + ex.Message)); 
 
 
 // (* print out subexpression after each step of evaluation *)
