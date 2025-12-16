@@ -13,7 +13,7 @@ type variable = string
 let var_eq x y = (compare x y = 0)
 let var_neq x y = not (compare x y = 0)
 
-type constant = Int of int | Bool of bool 
+type constant = Int of int | Bool of bool | String of string
 
 type operator = Plus | Minus | Times | Div | Less | LessEq 
 
@@ -60,6 +60,9 @@ type exp =
   | Closure of env * variable * variable * exp
 //     App (f, x) is a function call of closure f with argument x
   | App of exp * exp
+// Exception handling
+  | Raise of exp
+  | TryWith of exp * variable * exp
 
 and env = (variable * exp) list
 

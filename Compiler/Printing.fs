@@ -11,6 +11,7 @@ let string_of_const c =
   match c with 
     | Int i -> string i
     | Bool b -> string b
+    | String s -> s
 
 
 let string_of_op op = 
@@ -48,6 +49,8 @@ let precedence e =
     | Rec _ -> max_prec
     | Closure _ -> max_prec
     | App _ ->  2
+    | Raise _ -> max_prec
+    | TryWith _ -> max_prec
 
 let rec env2string env =
   let elem2string x v = x + "=" + exp2string max_prec v in
@@ -90,6 +93,10 @@ and exp2string prec e =
       | Closure (env,f,x,body) -> 
         "closure "+env2string env+" "+f+" "+x+" = "+(exp2string max_prec body)
       | App (e1,e2) -> (exp2string p e1)+" "+(exp2string p e2)
+      | Raise e1 -> "raise " + (exp2string p e1)
+      | TryWith (e1, x, e2) -> 
+        "try " + (exp2string max_prec e1) + 
+        " with " + x + " -> " + (exp2string p e2)
 
   in 
     if p > prec then "(" + s + ")" else s

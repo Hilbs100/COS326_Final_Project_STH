@@ -79,6 +79,11 @@ let rec free_vars_with_bound (bound:variable list) (e:exp) : variable list =
   (* A closure literal is already closed by its env; treat as having no free vars. *)
   | Closure _ -> []
   | App (e1, e2) -> var_union (free_vars_with_bound bound e1) (free_vars_with_bound bound e2)
+  | Raise e1 -> free_vars_with_bound bound e1
+  | TryWith (e1, x, e2) ->
+      let f1 = free_vars_with_bound bound e1 in
+      let f2 = free_vars_with_bound (x :: bound) e2 in
+      var_union f1 f2
 
 let free_vars_fun (f:variable) (x:variable) (b:exp) : variable list =
   free_vars_with_bound [f; x] b
@@ -156,6 +161,15 @@ let eval_body (env:env) (eval_loop:env -> exp -> exp) (e:exp) : exp =
         | EmptyList -> eval_loop env e2
         | Cons(v1, v2) -> eval_loop ((hd, v1)::(tl, v2)::env) e3
         | v -> raise (BadMatch v))
+    | Raise e1 -> 
+        let v1 = eval_loop env e1 in
+        // printfn "Exception raised: %s" (string_of_exp v1)
+        Var (sprintf "Exception raised: %s" (string_of_exp v1))
+    | TryWith (e1, x, e2) ->
+        try 
+          eval_loop env e1
+        with
+        | ex -> eval_loop ((x, Var ex.Message) :: env) e2
     
 // (* evaluate closed, top-level expression e *)
 

@@ -15,6 +15,7 @@ exception BadIf of exp
 exception BadMatch of exp 
 exception BadOp of exp * operator * exp 
 exception BadPair of exp 
+exception UserRaise of exp
 
 // evaluation of primitive operators 
 
