@@ -158,23 +158,27 @@ let bad_op = TryWith(Op (Constant (Bool true), Plus, Constant (Int 1)), "e", Rai
 
 let fact_safe =
   Rec("fact_safe", "n",
-    If(Op(Var "n", Less, zero),
+    If(Op(Var "n", Less, one),
        Raise (Constant (String "Negative argument to factorial")),
-       Op(Var "n", Times, App(Var "fact_safe", Op(Var "n", Minus, one)))
+       If(Op(Var "n", LessEq, one), one, Op(Var "n", Times, App(Var "fact_safe", Op(Var "n", Minus, one))))
     )
   )
 
-let argument_err_safe =
-  TryWith(App(fact_safe, Constant (Int (-5))), "e", Constant (Int 0))
+let arg_err_safe =
+  TryWith(App(fact_safe, Constant (Int (-1))), "e", Constant (Int 1))
 
-let argument_err = App(fact_safe, Constant (Int (-5)))
+
+let no_arg_err =
+  TryWith(App(fact_safe, Constant (Int (3))), "e", Constant (Int 1))
+
+let arg_err = App(fact_safe, Constant (Int (-5)))
 
 (*********)
 (* TESTS *)
 (*********)
 
 (* Feel free to add many more tests of your own to the list *)
-let tests = [zero; fact4; list4; sl4; clo; incr_all; incr_all4; sum_pairs; bad_op; argument_err_safe; argument_err]
+let tests = [zero; fact4; list4; sl4; clo; incr_all; incr_all4; sum_pairs; bad_op; arg_err_safe; no_arg_err; arg_err]
 
 let run_test eval exp =
   Printf.printf "========\n";

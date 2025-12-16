@@ -164,10 +164,13 @@ let eval_body (env:env) (eval_loop:env -> exp -> exp) (e:exp) : exp =
     | Raise e1 -> 
         let v1 = eval_loop env e1 in
         // printfn "Exception raised: %s" (string_of_exp v1)
-        Var (sprintf "Exception raised: %s" (string_of_exp v1))
+        Raise v1
     | TryWith (e1, x, e2) ->
         try 
-          eval_loop env e1
+          let v = eval_loop env e1 in
+          match v with
+          | Raise e1 -> eval_loop ((x, e1) :: env) e2
+          | _ -> v
         with
         | ex -> eval_loop ((x, Var ex.Message) :: env) e2
     
