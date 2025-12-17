@@ -4,6 +4,6 @@ open Compiler.Evaluate
 
 printfn "Everything compiled"
 
-let main = run_tests eval tests
+let main = run_labeled_tests eval labeled_tests
 
 printfn "Everything ran"

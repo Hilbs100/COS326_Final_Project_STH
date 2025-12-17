@@ -235,8 +235,22 @@ let add_error = App (App(add, two), (Constant (Bool true)))
 (*********)
 
 (* Feel free to add many more tests of your own to the list *)
-let tests = [zero; fact4; list4; ol4; ol3; sl4; sol3; test_set4; get_set4;
-  clo; incr_all; incr_all4; sum_pairs; arg_err_safe; no_arg_err; arg_err; add_error]
+
+// Labels
+let lists = ("Lists", [list4; ol4; ol3; sl4; sol3])
+let sets = ("Sets", [test_set4; get_set4; test_set])
+let functions = ("Functions", [clo; incr_all; incr_all4; sum_pairs])
+let exceptions = ("Exceptions", [arg_err_safe; no_arg_err; arg_err])
+let type_checks = ("Type Checking", [bad_op; add_error])
+
+let tests = [zero; fact4; list4; ol4; ol3; sl4; sol3; test_set4; get_set4; test_set;
+  clo; incr_all; incr_all4; sum_pairs; bad_op; arg_err_safe; no_arg_err; arg_err; add_error]
+
+let labeled_tests = [lists; sets; functions; exceptions; type_checks]
+
+(***********************)
+(* TEST RUNNERS        *)
+(***********************)
 
 let run_test eval exp =
   Printf.printf "========\n";
@@ -245,9 +259,15 @@ let run_test eval exp =
   Printf.printf "%s\n" (string_of_exp (eval exp));
   Printf.printf "========\n"
 
+
 let run_tests eval tests =
   List.iter (run_test eval) tests
 
+let run_labeled_test eval ls =
+  match ls with 
+    (label, tests) ->
+      Printf.printf "===== %s =====\n" label;
+      run_tests eval tests
 
-    
-      
+let run_labeled_tests eval lss = 
+  List.iter (run_labeled_test eval) lss
